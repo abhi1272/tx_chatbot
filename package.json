@@ -12,6 +12,12 @@
   "dependencies": {
     "axios": "^1.7.2",
     "env-cmd": "^10.1.0",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "google-auth-library": "^9.11.0",
+    "lodash": "^4.17.21",
+    "mongodb": "^6.7.0",
+    "node-cache": "^5.1.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "uuid": "^10.0.0"
   }
 }

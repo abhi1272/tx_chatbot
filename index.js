@@ -13,7 +13,7 @@ app.use(bodyParser.json());
 app.use('/dialogflow', dialogflowRoutes);
 app.use('/telegram', telegramRoutes);
 app.use('/sheet', sheetRoutes);
-app.use('/api', dataRoutes);
+// app.use('/api', dataRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

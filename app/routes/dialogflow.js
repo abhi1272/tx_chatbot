@@ -4,6 +4,7 @@ const { telegramToken } = require('../config/config');
 const TelegramBot = require('node-telegram-bot-api');
 const { handleRequest } = require('../controller /handledQuery');
 const { getBillData } = require('../controller /billController');
+const { handleCategory } = require('../controller /categoryController');
 const bot = new TelegramBot(telegramToken);
 
 
@@ -15,6 +16,10 @@ router.post('/webhook', async (req, res) => {
   if (body && body.queryResult) {
     let responseText = body.queryResult.fulfillmentText;
     console.log('Response text:', responseText);
+
+    if (body.queryResult.intent.displayName.includes('Category')) {
+      responseText = await handleCategory(req, res);
+    }
 
     if (body.queryResult.intent.displayName === "Get Students By Activity") {
       responseText = await handleRequest(req, res);

@@ -47,7 +47,7 @@ const handleCategory = async (req, res) => {
                 fulfillmentText: `Failed to delete category ${category}.`
             });
         }
-    } else if (intentName === 'ListCategories') {
+    } else if (intentName === 'ListCategory') {
         try {
             const categories = await callApi('GET', `${API_BASE_URL}/category`);
             const categoryNames = categories?.data.map(cat => cat.name).join('\n');

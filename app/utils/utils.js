@@ -1,26 +1,12 @@
 const stringSimilarity = require("string-similarity");
+const {
+  FIELD_MAPPING,
+  FILTER_COLS,
+  SUM_COLS,
+} = require("../constants/dialogflow");
 
 function filterAndSum(data, filterCriteria) {
-  const { ColumnName, ...criteria } = filterCriteria;
-
-  // Filter the data based on the provided criteria
-  let filteredData = [];
-  let sumResult = 0;
-  Object.keys(criteria).forEach((key) => {
-    if (criteria[key] !== "" && criteria[key].length !== 0) {
-      if (key === "YarnCategory") {
-        filteredData = filterByYarnCategory(data, filterCriteria);
-      } else if (key === "CustomerName") {
-        filteredData = filterByCustomerName(data, filterCriteria);
-      } else if (key === "BusinessLine") {
-        filteredData = filterByBusinessLine(data, filterCriteria);
-      } else if (key === "MaterialGroupDesc") {
-        filteredData = filterByMaterialGroupDesc(data, filterCriteria);
-      } else if (key === "SalesOffice") {
-        filteredData = filterBySalesOffice(data, filterCriteria);
-      }
-    }
-  });
+  const filteredData = filter(data, filterCriteria);
 
   sumResult = sumByColName(filteredData.data, filterCriteria);
 
@@ -29,56 +15,35 @@ function filterAndSum(data, filterCriteria) {
   return `${filterCriteria.ColumnName[0]} of ${filteredData.colName} ${filteredData.keyValue} is ${sumResult}.`;
 }
 
-function filterByYarnCategory(data, filterCriteria) {
-  const filteredData = data.filter((row) => {
-    return row["Yarn Category"] === filterCriteria.YarnCategory;
+function filter(data, filterCriteria) {
+  const { ColumnName, ...criteria } = filterCriteria;
+
+  // Filter the data based on the provided criteria
+  let filteredData = [];
+  let sumResult = 0;
+  Object.keys(criteria).forEach((key) => {
+    if (criteria[key] !== "" && criteria[key].length !== 0) {
+      if (key === "CustomerName") {
+        filteredData = filterByCustomerName(data, filterCriteria);
+      } else {
+        filteredData = filterByCategory(data, criteria[key], key);
+      }
+    }
   });
-  return {
-    key: "YarnCategory",
-    colName: "Yarn Category",
-    keyValue: filteredData[0]["Yarn Category"],
-    data: filteredData,
-  };
+
+  return filteredData;
 }
 
-function filterByBusinessLine(data, filterCriteria) {
+function filterByCategory(data, keyV, key) {
   const filteredData = data.filter((row) => {
-    return row["Business Line"] === filterCriteria.BusinessLine;
+    return row[FIELD_MAPPING[key]] === keyV;
   });
   return {
-    key: "YarnCategory",
-    colName: "Business Line",
-    keyValue: filteredData[0]["Business Line"],
+    key,
+    colName: FIELD_MAPPING[key],
+    keyValue: filteredData[0][FIELD_MAPPING[key]],
     data: filteredData,
   };
-}
-
-function filterByMaterialGroupDesc(data, filterCriteria) {
-  const filteredData = data.filter((row) => {
-    return row["Material Group Desc"] === filterCriteria.MaterialGroupDesc;
-  });
-  return {
-    key: "MaterialGroupDesc",
-    colName: "Material Group Desc",
-    keyValue: filteredData[0]["Material Group Desc"],
-    data: filteredData,
-  };
-}
-
-function filterBySalesOffice(data, filterCriteria) {
-  const filteredData = data.filter((row) => {
-    return row["Sales Office Name"] === filterCriteria.SalesOffice;
-  });
-  return {
-    key: "SalesOffice",
-    colName: "Sales Office Name",
-    keyValue: filteredData[0]["Sales Office Name"],
-    data: filteredData,
-  };
-}
-
-function normalizeString(str) {
-  return str.replace(/\./g, "").toLowerCase();
 }
 
 function filterByCustomerName(data, filterCriteria) {
@@ -128,16 +93,86 @@ function sumByColName(data, filterCriteria) {
   }, 0);
 }
 
+function groupByAndSum(data, parameters) {
+  const filterColName = Object.keys(parameters).find((key) =>
+    FILTER_COLS.includes(key)
+  );
 
-// const sortData = (data, columnIndex, order = "asc") => {
-//   return data.sort((a, b) => {
-//     if (order === "asc") {
-//       return a[columnIndex] > b[columnIndex] ? 1 : -1;
-//     } else {
-//       return a[columnIndex] < b[columnIndex] ? 1 : -1;
-//     }
+  const sumColName = SUM_COLS.find((col) =>
+    parameters.ColumnName.includes(col)
+  );
+
+  let filterData = data;
+
+  if (filterColName) {
+    filterData = filter(data, parameters).data;
+  }
+
+  const result = filterData.reduce((acc, obj) => {
+    let key = obj[parameters.ColumnName[0]];
+    if (!acc[key]) {
+      acc[key] = { [parameters.ColumnName[0]]: key, [`total ${sumColName}`]: 0 };
+    }
+    acc[key][ [`total ${sumColName}`]] += +obj[sumColName];
+    return acc;
+  }, {});
+  const sortedData = sortData(Object.values(result),  [`total ${sumColName}`], parameters.sortOrder || "desc").slice(0, 10);
+  const finalResult = sortedData.map(item => `${item[parameters.ColumnName[0]]} :- ${item[ [`total ${sumColName}`]].toLocaleString()}`).join('\n');
+  return finalResult;
+}
+
+function normalizeString(str) {
+  return str.replace(/\./g, "").toLowerCase();
+}
+
+const sortData = (data, columnIndex, order = "asc") => {
+  return data.sort((a, b) => {
+    if (order === "asc") {
+      return a[columnIndex] > b[columnIndex] ? 1 : -1;
+    } else {
+      return a[columnIndex] < b[columnIndex] ? 1 : -1;
+    }
+  });
+};
+
+
+// function filterByBusinessLine(data, filterCriteria) {
+//   const filteredData = data.filter((row) => {
+//     return row["Business Line"] === filterCriteria.BusinessLine;
 //   });
-// };
+//   return {
+//     key: "YarnCategory",
+//     colName: "Business Line",
+//     keyValue: filteredData[0]["Business Line"],
+//     data: filteredData,
+//   };
+// }
+
+// function filterByMaterialGroupDesc(data, filterCriteria) {
+//   const filteredData = data.filter((row) => {
+//     return row["Material Group Desc"] === filterCriteria.MaterialGroupDesc;
+//   });
+//   return {
+//     key: "MaterialGroupDesc",
+//     colName: "Material Group Desc",
+//     keyValue: filteredData[0]["Material Group Desc"],
+//     data: filteredData,
+//   };
+// }
+
+// function filterBySalesOffice(data, filterCriteria) {
+//   const filteredData = data.filter((row) => {
+//     return row["Sales Office Name"] === filterCriteria.SalesOffice;
+//   });
+//   return {
+//     key: "SalesOffice",
+//     colName: "Sales Office Name",
+//     keyValue: filteredData[0]["Sales Office Name"],
+//     data: filteredData,
+//   };
+// }
+
+
 
 // const groupBy = (data, columnIndex) => {
 //   return data.reduce((acc, row) => {
@@ -188,5 +223,6 @@ function sumByColName(data, filterCriteria) {
 // }
 
 module.exports = {
-  filterAndSum
+  filterAndSum,
+  groupByAndSum,
 };

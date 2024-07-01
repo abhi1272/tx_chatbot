@@ -6,7 +6,7 @@ async function pendingOrderBook(req, res) {
   const parameters = req.body.queryResult.parameters;
   // ColumnName YarnCategory
 
-  const resp = await getQuantity(parameters);
+  const resp = await getQuantity(parameters, query);
   return resp
 }
 

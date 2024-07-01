@@ -6,119 +6,150 @@ const {
 } = require("../constants/dialogflow");
 
 function filterAndSum(data, filterCriteria) {
-  const filteredData = filter(data, filterCriteria);
+  try {
+    const filteredData = filter(data, filterCriteria);
 
-  sumResult = sumByColName(filteredData.data, filterCriteria);
+    const sumResult = sumByColName(filteredData.data, filterCriteria);
+    const formattedSumResult = sumResult.toLocaleString();
 
-  sumResult = sumResult.toLocaleString();
-
-  return `${filterCriteria.ColumnName[0]} of ${filteredData.colName} ${filteredData.keyValue} is ${sumResult}.`;
+    return `${filterCriteria.ColumnName[0]} of ${filteredData.colName} ${filteredData.keyValue} is ${formattedSumResult}.`;
+  } catch (error) {
+    console.error("Error in filterAndSum:", error);
+    return "An error occurred while processing your request.";
+  }
 }
 
 function filter(data, filterCriteria) {
-  const { ColumnName, ...criteria } = filterCriteria;
+  try {
+    const { ColumnName, ...criteria } = filterCriteria;
 
-  // Filter the data based on the provided criteria
-  let filteredData = [];
-  let sumResult = 0;
-  Object.keys(criteria).forEach((key) => {
-    if (criteria[key] !== "" && criteria[key].length !== 0) {
-      if (key === "CustomerName") {
-        filteredData = filterByCustomerName(data, filterCriteria);
-      } else {
-        filteredData = filterByCategory(data, criteria[key], key);
+    let filteredData = [];
+    Object.keys(criteria).forEach((key) => {
+      if (criteria[key] !== "" && criteria[key].length !== 0) {
+        if (key === "CustomerName") {
+          filteredData = filterByCustomerName(data, filterCriteria);
+        } else {
+          filteredData = filterByCategory(data, criteria[key], key);
+        }
       }
-    }
-  });
+    });
 
-  return filteredData;
+    return filteredData;
+  } catch (error) {
+    console.error("Error in filter:", error);
+    throw new Error("Error filtering data");
+  }
 }
 
 function filterByCategory(data, keyV, key) {
-  const filteredData = data.filter((row) => {
-    return row[FIELD_MAPPING[key]] === keyV;
-  });
-  return {
-    key,
-    colName: FIELD_MAPPING[key],
-    keyValue: filteredData[0][FIELD_MAPPING[key]],
-    data: filteredData,
-  };
+  try {
+    const filteredData = data.filter((row) => {
+      return row[FIELD_MAPPING[key]] === keyV;
+    });
+
+    if (filteredData.length === 0) {
+      throw new Error("No matching data found");
+    }
+
+    return {
+      key,
+      colName: FIELD_MAPPING[key],
+      keyValue: filteredData[0][FIELD_MAPPING[key]],
+      data: filteredData,
+    };
+  } catch (error) {
+    console.error("Error in filterByCategory:", error);
+    throw new Error("Error filtering by category");
+  }
 }
 
 function filterByCustomerName(data, filterCriteria) {
-  const customerNameLower = normalizeString(filterCriteria.CustomerName);
-
-  // Convert all party names to normalized lowercase for case-insensitive comparison
-  const partyNames = data.map((record) =>
-    normalizeString(record["PARTY NAME"])
-  );
-
-  // Find the best match using normalized names
-  const matches = stringSimilarity.findBestMatch(customerNameLower, partyNames);
-  const bestMatch = matches.bestMatch;
-
-  console.log("Best match:", bestMatch.target);
-
-  // Filter data based on the best match
-  const filteredData = data.filter((record) => {
-    return (
-      stringSimilarity.compareTwoStrings(
-        normalizeString(record["PARTY NAME"]),
-        bestMatch.target
-      ) > 0.7 // Adjust similarity threshold as needed
+  try {
+    const customerNameLower = normalizeString(filterCriteria.CustomerName);
+    const partyNames = data.map((record) =>
+      normalizeString(record["PARTY NAME"])
     );
-  });
 
-  return {
-    key: "CustomerName",
-    colName: "customer",
-    keyValue: filteredData[0]["PARTY NAME"],
-    data: filteredData,
-  };
+    const matches = stringSimilarity.findBestMatch(customerNameLower, partyNames);
+    const bestMatch = matches.bestMatch;
+
+    console.log("Best match:", bestMatch.target);
+
+    const filteredData = data.filter((record) => {
+      return (
+        stringSimilarity.compareTwoStrings(
+          normalizeString(record["PARTY NAME"]),
+          bestMatch.target
+        ) > 0.7
+      );
+    });
+
+    if (filteredData.length === 0) {
+      throw new Error("No matching customer found");
+    }
+
+    return {
+      key: "CustomerName",
+      colName: "customer",
+      keyValue: filteredData[0]["PARTY NAME"],
+      data: filteredData,
+    };
+  } catch (error) {
+    console.error("Error in filterByCustomerName:", error);
+    throw new Error("Error filtering by customer name");
+  }
 }
 
 function sumByColName(data, filterCriteria) {
-  const columnName = filterCriteria.ColumnName[0]; // Assuming ColumnName is an array with a single element
-
-  return data.reduce((acc, item) => {
-    // Remove commas, trim whitespace, and convert the value to a number
-    const value = parseFloat(item[columnName]);
-    // Check if the parsed value is a valid number
-    if (!isNaN(value)) {
-      return acc + value; // Add the value to the accumulator
-    } else {
-      return acc; // Ignore invalid values
-    }
-  }, 0);
+  try {
+    const columnName = filterCriteria.ColumnName[0];
+    return data.reduce((acc, item) => {
+      const value = parseFloat(item[columnName]);
+      if (!isNaN(value)) {
+        return acc + value;
+      } else {
+        console.warn(`Invalid value for ${columnName}:`, item[columnName]);
+        return acc;
+      }
+    }, 0);
+  } catch (error) {
+    console.error("Error in sumByColName:", error);
+    throw new Error("Error summing by column name");
+  }
 }
 
 function groupByAndSum(data, parameters) {
-  const filterColName = Object.keys(parameters).find((key) =>
-    FILTER_COLS.includes(key)
-  );
+  try {
+    const filterColName = Object.keys(parameters).find((key) =>
+      FILTER_COLS.includes(key)
+    );
 
-  const sumColName = SUM_COLS.find((col) =>
-    parameters.ColumnName.includes(col)
-  );
+    const sumColName = SUM_COLS.find((col) =>
+      parameters.ColumnName.includes(col)
+    );
 
-  let filterData = data;
+    let filterData = data;
 
-  if (filterColName) {
-    filterData = filter(data, parameters).data;
-  }
-
-  const result = filterData.reduce((acc, obj) => {
-    let key = obj[parameters.ColumnName[0]];
-    if (!acc[key]) {
-      acc[key] = { [parameters.ColumnName[0]]: key, [`total ${sumColName}`]: 0 };
+    if (filterColName) {
+      filterData = filter(data, parameters).data;
     }
-    acc[key][ [`total ${sumColName}`]] += +obj[sumColName];
-    return acc;
-  }, {});
-  const sortedData = sortData(Object.values(result),  [`total ${sumColName}`], parameters.sortOrder || "desc").slice(0, 10);
-  const finalResult = sortedData.map(item => `${item[parameters.ColumnName[0]]} :- ${item[ [`total ${sumColName}`]].toLocaleString()}`).join('\n');
-  return finalResult;
+
+    const result = filterData.reduce((acc, obj) => {
+      let key = obj[parameters.ColumnName[0]];
+      if (!acc[key]) {
+        acc[key] = { [parameters.ColumnName[0]]: key, [`total ${sumColName}`]: 0 };
+      }
+      acc[key][`total ${sumColName}`] += +obj[sumColName];
+      return acc;
+    }, {});
+
+    const sortedData = sortData(Object.values(result), `total ${sumColName}`, parameters.sortOrder || "desc").slice(0, 10);
+    const finalResult = sortedData.map(item => `${item[parameters.ColumnName[0]]} :- ${item[`total ${sumColName}`].toLocaleString()}`).join('\n');
+    return finalResult;
+  } catch (error) {
+    console.error("Error in groupByAndSum:", error);
+    return "An error occurred while processing your request.";
+  }
 }
 
 function normalizeString(str) {
@@ -126,15 +157,19 @@ function normalizeString(str) {
 }
 
 const sortData = (data, columnIndex, order = "asc") => {
-  return data.sort((a, b) => {
-    if (order === "asc") {
-      return a[columnIndex] > b[columnIndex] ? 1 : -1;
-    } else {
-      return a[columnIndex] < b[columnIndex] ? 1 : -1;
-    }
-  });
+  try {
+    return data.sort((a, b) => {
+      if (order === "asc") {
+        return a[columnIndex] > b[columnIndex] ? 1 : -1;
+      } else {
+        return a[columnIndex] < b[columnIndex] ? 1 : -1;
+      }
+    });
+  } catch (error) {
+    console.error("Error in sortData:", error);
+    throw new Error("Error sorting data");
+  }
 };
-
 
 // function filterByBusinessLine(data, filterCriteria) {
 //   const filteredData = data.filter((row) => {

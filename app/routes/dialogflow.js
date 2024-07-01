@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { telegramToken } = require('../config/config');
 const TelegramBot = require('node-telegram-bot-api');
-const { handleRequest } = require('../controller /handledQuery');
-const { getBillData } = require('../controller /billController');
-const { handleCategory } = require('../controller /categoryController');
+const { getQuantity, pendingOrderBook } = require('../controller /samController');
+const { SAM_PROJECT_ID } = require('../constants/dialogflow');
 const bot = new TelegramBot(telegramToken);
 
 
@@ -17,16 +16,8 @@ router.post('/webhook', async (req, res) => {
     let responseText = body.queryResult.fulfillmentText;
     console.log('Response text:', responseText);
 
-    if (body.queryResult.intent.displayName.includes('Category')) {
-      responseText = await handleCategory(req, res);
-    }
-
-    if (body.queryResult.intent.displayName === "Get Students By Activity") {
-      responseText = await handleRequest(req, res);
-    }
-
-    if (body.queryResult.intent.displayName === "bill") {
-      responseText = await getBillData(req, res);
+    if(body.queryResult.intent.name.includes(SAM_PROJECT_ID)){
+      responseText = await pendingOrderBook(req, res);
     }
 
     // Extract chat ID if available

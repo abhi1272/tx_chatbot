@@ -18,7 +18,7 @@ bot.on('message', async (msg) => {
       const accessToken = await getAccessToken();
 
       // Send message to Dialogflow
-      const response = await axios.post(`https://dialogflow.googleapis.com/v2/projects/pharmabot-jwdg/agent/sessions/${sessionId}:detectIntent`, {
+      const response = await axios.post(`https://dialogflow.googleapis.com/v2/projects/${process.env.GOOGLE_PROJECT_ID}/agent/sessions/${sessionId}:detectIntent`, {
           queryInput: {
               text: {
                   text: messageText,

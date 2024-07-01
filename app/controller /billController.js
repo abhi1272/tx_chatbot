@@ -7,6 +7,22 @@ const cacheMethods = require('../services/cache');
 async function getBillData(req, res) {
   // Determine which type of query is being asked
 
+      // if (body.queryResult.intent.displayName.includes('Category')) {
+    //   responseText = await handleCategory(req, res);
+    // }
+
+    // if (body.queryResult.intent.displayName.includes('Expense')) {
+    //   responseText = await handleExpense(req, res);
+    // }
+
+    // if (body.queryResult.intent.displayName === "Get Students By Activity") {
+    //   responseText = await handleRequest(req, res);
+    // }
+
+    // if (body.queryResult.intent.displayName === "bill") {
+    //   responseText = await getBillData(req, res);
+    // }
+
   const queryResult = req.body.queryResult;
 
   let responseText = "";

@@ -6,9 +6,12 @@ async function getQuantity(parameters, query) {
   try {
     const data = cacheMethods.get("sheetData");
     let processedData;
-    if (parameters.ColumnName && parameters.ColumnName.length === 1) {
+
+    if (parameters.GroupBy.length) {
+      processedData = groupByAndSum(data, parameters);
+    } else if (parameters?.ColumnName.length === 1) {
       processedData = filterAndSum(data, parameters);
-    } else if (parameters.ColumnName && parameters.ColumnName.length === 2) {
+    } else if (parameters?.ColumnName.length === 2) {
       processedData = groupByAndSum(data, parameters);
     }
     return processedData;

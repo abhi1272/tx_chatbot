@@ -12,7 +12,7 @@ function filterAndSum(data, filterCriteria) {
     const sumResult = sumByColName(filteredData.data, filterCriteria);
     const formattedSumResult = sumResult.toLocaleString();
 
-    return `${filterCriteria.ColumnName[0]} of ${filteredData.colName} ${filteredData.keyValue} is ${formattedSumResult}.`;
+    return `${filterCriteria.ColumnName[0]} of ${filteredData.colName} ${filteredData.keyValue} is ${formattedSumResult} Kg.`;
   } catch (error) {
     console.error("Error in filterAndSum:", error);
     return "An error occurred while processing your request.";
@@ -121,12 +121,17 @@ function sumByColName(data, filterCriteria) {
 function groupByAndSum(data, parameters) {
   try {
     const filterColName = Object.keys(parameters).find((key) =>
-      FILTER_COLS.includes(key)
+      FILTER_COLS.includes(key) && parameters[key] !== "" && parameters[key] !== null && parameters[key] !== undefined
     );
 
     const sumColName = SUM_COLS.find((col) =>
       parameters.ColumnName.includes(col)
     );
+
+    let groupByColName = parameters.ColumnName[0]
+    if(parameters?.GroupBy?.length){
+        groupByColName = parameters.GroupBy;
+    }
 
     let filterData = data;
 
@@ -135,16 +140,16 @@ function groupByAndSum(data, parameters) {
     }
 
     const result = filterData.reduce((acc, obj) => {
-      let key = obj[parameters.ColumnName[0]];
+      let key = obj[groupByColName];
       if (!acc[key]) {
-        acc[key] = { [parameters.ColumnName[0]]: key, [`total ${sumColName}`]: 0 };
+        acc[key] = { [groupByColName]: key, [`total ${sumColName}`]: 0 };
       }
       acc[key][`total ${sumColName}`] += +obj[sumColName];
       return acc;
     }, {});
 
     const sortedData = sortData(Object.values(result), `total ${sumColName}`, parameters.sortOrder || "desc").slice(0, 10);
-    const finalResult = sortedData.map(item => `${item[parameters.ColumnName[0]]} :- ${item[`total ${sumColName}`].toLocaleString()}`).join('\n');
+    const finalResult = sortedData.map(item => `${item[groupByColName]} :- ${item[`total ${sumColName}`].toLocaleString()} Kg`).join('\n');
     return finalResult;
   } catch (error) {
     console.error("Error in groupByAndSum:", error);

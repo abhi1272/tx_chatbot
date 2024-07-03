@@ -9,8 +9,7 @@ async function getQuantity(parameters, query) {
     console.log('----data loaded------')
     if(!data || data?.length === 0){
       console.log('----data not found------')
-      fetchSheetData()
-      data = cacheMethods.get("sheetData");
+      data = await fetchSheetData()
     }
     let processedData;
 

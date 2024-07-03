@@ -2,10 +2,25 @@ const express = require("express");
 const router = express.Router();
 const axios = require("axios");
 const TelegramBot = require("node-telegram-bot-api");
-const { telegramToken } = require("../config/config");
-const bot = new TelegramBot(telegramToken, { polling: true });
+const { TELEGRAM_TOKEN, GOOGLE_PROJECT_ID, GEMINI_ENABLE } = process.env
 const { getAccessToken } = require("../services/google");
 const { getResponseFromModel } = require("../services/geminiClient");
+
+const bot = new TelegramBot(TELEGRAM_TOKEN, {
+//   webHook: {
+//     port: process.env.PORT || 3000, // Specify the port where your app is running
+//   },
+});
+
+// Set the Telegram webhook to your Vercel deployed URL
+const url = `${process.env.VERCEL_URL}`;
+bot.setWebHook(`${url}/telegram/webhook`);
+
+// Endpoint to handle Telegram webhook events
+router.post("/telegram/webhook", (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
 
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
@@ -22,7 +37,7 @@ bot.on("message", async (msg) => {
     if (!messageText.includes("\n")) {
       // Send message to Dialogflow
       response = await axios.post(
-        `https://dialogflow.googleapis.com/v2/projects/${process.env.GOOGLE_PROJECT_ID}/agent/sessions/${sessionId}:detectIntent`,
+        `https://dialogflow.googleapis.com/v2/projects/${GOOGLE_PROJECT_ID}/agent/sessions/${sessionId}:detectIntent`,
         {
           queryInput: {
             text: {
@@ -45,11 +60,11 @@ bot.on("message", async (msg) => {
     }
 
     let responseText;
-    if (process.env.GEMINI_ENABLE &&
+    if (GEMINI_ENABLE &&
       (messageText.includes("\n") ||
-      response?.data.queryResult.intent.displayName ===
-        "Default Fallback Intent" ||
-      response?.data.queryResult.parameters?.ColumnName?.length === 0)
+        response?.data.queryResult.intent.displayName ===
+          "Default Fallback Intent" ||
+        response?.data.queryResult.parameters?.ColumnName?.length === 0)
     ) {
       responseText = await getResponseFromModel(messageText);
     } else {
@@ -62,8 +77,8 @@ bot.on("message", async (msg) => {
   }
 });
 
+// Route for handling custom updates (if needed)
 router.post("/telegram", (req, res) => {
-  // This endpoint is not necessary unless you need to handle custom updates
   res.send("Telegram endpoint");
 });
 

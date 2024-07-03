@@ -5,11 +5,12 @@ const { fetchSheetData } = require("./sheet");
 
 async function getQuantity(parameters, query) {
   try {
-    const data = cacheMethods.get("sheetData");
+    let data = cacheMethods.get("sheetData");
     console.log('----data loaded------')
-    if(!data){
+    if(!data || data?.length === 0){
       console.log('----data not found------')
       fetchSheetData()
+      data = cacheMethods.get("sheetData");
     }
     let processedData;
 

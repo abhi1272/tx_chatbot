@@ -1,10 +1,16 @@
 const stringSimilarity = require("string-similarity");
 const { filterAndSum, groupByAndSum } = require("../utils/utils");
 const cacheMethods = require("./cache");
+const { fetchSheetData } = require("./sheet");
 
 async function getQuantity(parameters, query) {
   try {
     const data = cacheMethods.get("sheetData");
+    console.log('----data loaded------', data?.length)
+    if(data?.length === 0){
+      console.log('----data not found------')
+      fetchSheetData()
+    }
     let processedData;
 
     if (parameters.GroupBy.length) {

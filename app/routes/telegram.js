@@ -45,7 +45,7 @@ bot.on("message", async (msg) => {
     }
 
     let responseText;
-    if (GEMINI_ENABLE &&
+    if (process.env.GEMINI_ENABLE &&
       (messageText.includes("\n") ||
       response?.data.queryResult.intent.displayName ===
         "Default Fallback Intent" ||

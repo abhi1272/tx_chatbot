@@ -3,23 +3,9 @@ const router = express.Router();
 const axios = require("axios");
 const TelegramBot = require("node-telegram-bot-api");
 const { telegramToken } = require("../config/config");
-
-const bot = new TelegramBot(telegramToken, { 
-  webHook: true 
-});
-
+const bot = new TelegramBot(telegramToken, { polling: true });
 const { getAccessToken } = require("../services/google");
 const { getResponseFromModel } = require("../services/geminiClient");
-
-// Set the Telegram webhook to your Vercel deployed URL
-const url = `${process.env.VERCEL_URL}`;
-bot.setWebHook(`${url}/telegram/webhook`);
-
-// Endpoint to handle Telegram webhook
-router.post("/telegram/webhook", (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
-});
 
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;

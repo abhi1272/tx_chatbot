@@ -6,8 +6,8 @@ const { fetchSheetData } = require("./sheet");
 async function getQuantity(parameters, query) {
   try {
     const data = cacheMethods.get("sheetData");
-    console.log('----data loaded------', data?.length)
-    if(data?.length === 0){
+    console.log('----data loaded------')
+    if(!data){
       console.log('----data not found------')
       fetchSheetData()
     }

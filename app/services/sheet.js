@@ -1,9 +1,6 @@
 const axios = require('axios');
-const { getPendingData } = require('../controller /samController');
 const cacheMethods = require('./cache');
 const { P_GOOGLE_SHEET_API_KEY, P_SHEET_ID } = process.env;
-const sheetName = "Data"; // Replace with your sheet name
-
 
 async function fetchSheetData(apiKey = P_GOOGLE_SHEET_API_KEY, spreadsheetId = P_SHEET_ID, sheetName = "Data") {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}?key=${apiKey}`;

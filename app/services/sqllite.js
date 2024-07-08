@@ -3,12 +3,6 @@ const xlsx = require("xlsx");
 const { fetchSheetData } = require("./sheet");
 const cacheMethods = require("./cache");
 
-// Load the Excel data
-const workbook = xlsx.readFile("pd.xlsx");
-const sheetName = workbook.SheetNames[0];
-const worksheet = workbook.Sheets[sheetName];
-// const jsonData = xlsx.utils.sheet_to_json(worksheet);
-
 // Create an in-memory SQLite database
 const db = new sqlite3.Database(":memory:");
 

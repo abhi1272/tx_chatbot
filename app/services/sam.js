@@ -20,6 +20,10 @@ async function getQuantity(parameters, query) {
     } else if (parameters?.ColumnName.length === 2) {
       processedData = groupByAndSum(data, parameters);
     }
+
+    if(processedData.includes('undefined')){
+      processedData = 'No Data Found! Please refine your Query.'
+    }
     return processedData;
   } catch (error) {
     return "Error processing data";

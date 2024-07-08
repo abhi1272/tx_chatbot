@@ -129,7 +129,7 @@ function sumByColName(data, filterCriteria) {
       return "Empty data array received";
     }
 
-    const columnName = filterCriteria.ColumnName[0];
+    const columnName = filterCriteria.ColumnName.find(item => SUM_COLS.includes(item))
     return data.reduce((acc, item) => {
       const value = parseFloat(item[columnName]);
       if (!isNaN(value)) {

@@ -27,6 +27,11 @@ async function fetchSheetData(apiKey = P_GOOGLE_SHEET_API_KEY, spreadsheetId = P
       return obj;
     });
     cacheMethods.set('sheetData', data)
+    let PARTY_NAME = data.map((item) => item['PARTY NAME'].toLowerCase())
+    let uniquePartyName = [...new Set(PARTY_NAME)];
+    // let Sales_Office_Name = data.map((item) => item['Sales Office Name'])
+    // let uniqueSalesOfficeName = [...new Set(Sales_Office_Name)];
+    cacheMethods.set('PARTY_NAME', uniquePartyName)
     return data;
   } catch (error) {
     console.error(

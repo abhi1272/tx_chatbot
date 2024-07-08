@@ -1,12 +1,18 @@
 const stringSimilarity = require("string-similarity");
+const moment = require('moment');
 const {
   FIELD_MAPPING,
   FILTER_COLS,
   SUM_COLS,
 } = require("../constants/dialogflow");
+const cacheMethods = require("../services/cache");
 
 function filterAndSum(data, filterCriteria) {
   try {
+    if (!data || data.length === 0) {
+      return "Empty data array received";
+    }
+
     const filteredData = filter(data, filterCriteria);
 
     const sumResult = sumByColName(filteredData.data, filterCriteria);
@@ -21,15 +27,23 @@ function filterAndSum(data, filterCriteria) {
 
 function filter(data, filterCriteria) {
   try {
+    if (!data || data.length === 0) {
+      return "Empty data array received";
+    }
+
     const { ColumnName, ...criteria } = filterCriteria;
 
-    let filteredData = [];
+    let filteredData = data;
     Object.keys(criteria).forEach((key) => {
       if (criteria[key] !== "" && criteria[key].length !== 0) {
         if (key === "CustomerName") {
-          filteredData = filterByCustomerName(data, filterCriteria);
-        } else {
-          filteredData = filterByCategory(data, criteria[key], key);
+          filteredData = filterByCustomerName(filteredData.data ? filteredData.data : filteredData, filterCriteria);
+        }
+        if(key === "date-period"){
+          filteredData = filterDataByDatePeriod(filteredData, filterCriteria['date-period'], key);
+        } 
+        if (key !== "CustomerName" && key !== "date-period") {
+          filteredData = filterByCategory(filteredData, criteria[key], key);
         }
       }
     });
@@ -37,38 +51,47 @@ function filter(data, filterCriteria) {
     return filteredData;
   } catch (error) {
     console.error("Error in filter:", error);
-    throw new Error("Error filtering data");
+    return "Error filtering data";
   }
 }
 
 function filterByCategory(data, keyV, key) {
   try {
+    if (!data || data.length === 0) {
+      return "Empty data array received";
+    }
+
     const filteredData = data.filter((row) => {
+      if (key === 'CountofThreads' || key === 'Blend') {
+        return +row[FIELD_MAPPING[key]] === +keyV;
+      }
       return row[FIELD_MAPPING[key]] === keyV;
     });
 
     if (filteredData.length === 0) {
-      throw new Error("No matching data found");
+      return "No matching data found";
     }
 
     return {
       key,
       colName: FIELD_MAPPING[key],
-      keyValue: filteredData[0][FIELD_MAPPING[key]],
-      data: filteredData,
+      keyValue: filteredData.length ? filteredData[0][FIELD_MAPPING[key]] : "No matching data found",
+      data: filteredData.length ? filteredData : [],
     };
   } catch (error) {
     console.error("Error in filterByCategory:", error);
-    throw new Error("Error filtering by category");
+    return "Error filtering by category";
   }
 }
 
 function filterByCustomerName(data, filterCriteria) {
   try {
+    if (!data || data.length === 0) {
+      return "Empty data array received";
+    }
+
     const customerNameLower = normalizeString(filterCriteria.CustomerName);
-    const partyNames = data.map((record) =>
-      normalizeString(record["PARTY NAME"])
-    );
+    const partyNames = cacheMethods.get('PARTY_NAME')
 
     const matches = stringSimilarity.findBestMatch(customerNameLower, partyNames);
     const bestMatch = matches.bestMatch;
@@ -85,23 +108,27 @@ function filterByCustomerName(data, filterCriteria) {
     });
 
     if (filteredData.length === 0) {
-      throw new Error("No matching customer found");
+      return "No matching customer found";
     }
 
     return {
       key: "CustomerName",
       colName: "customer",
-      keyValue: filteredData[0]["PARTY NAME"],
-      data: filteredData,
+      keyValue: filteredData.length ? filteredData[0]["PARTY NAME"] : "No matching data found", 
+      data: filteredData.length ? filteredData : [],
     };
   } catch (error) {
     console.error("Error in filterByCustomerName:", error);
-    throw new Error("Error filtering by customer name");
+    return "Error filtering by customer name";
   }
 }
 
 function sumByColName(data, filterCriteria) {
   try {
+    if (!data || data.length === 0) {
+      return "Empty data array received";
+    }
+
     const columnName = filterCriteria.ColumnName[0];
     return data.reduce((acc, item) => {
       const value = parseFloat(item[columnName]);
@@ -114,12 +141,16 @@ function sumByColName(data, filterCriteria) {
     }, 0);
   } catch (error) {
     console.error("Error in sumByColName:", error);
-    throw new Error("Error summing by column name");
+    return "Error summing by column name";
   }
 }
 
 function groupByAndSum(data, parameters) {
   try {
+    if (!data || data.length === 0) {
+      return "Empty data array received";
+    }
+
     const filterColName = Object.keys(parameters).find((key) =>
       FILTER_COLS.includes(key) && parameters[key] !== "" && parameters[key] !== null && parameters[key] !== undefined
     );
@@ -128,9 +159,9 @@ function groupByAndSum(data, parameters) {
       parameters.ColumnName.includes(col)
     );
 
-    let groupByColName = parameters.ColumnName[0]
-    if(parameters?.GroupBy?.length){
-        groupByColName = parameters.GroupBy;
+    let groupByColName = parameters.ColumnName[0];
+    if (parameters?.GroupBy?.length) {
+      groupByColName = parameters.GroupBy;
     }
 
     let filterData = data;
@@ -172,95 +203,29 @@ const sortData = (data, columnIndex, order = "asc") => {
     });
   } catch (error) {
     console.error("Error in sortData:", error);
-    throw new Error("Error sorting data");
+    return "Error sorting data";
   }
 };
 
-// function filterByBusinessLine(data, filterCriteria) {
-//   const filteredData = data.filter((row) => {
-//     return row["Business Line"] === filterCriteria.BusinessLine;
-//   });
-//   return {
-//     key: "YarnCategory",
-//     colName: "Business Line",
-//     keyValue: filteredData[0]["Business Line"],
-//     data: filteredData,
-//   };
-// }
+function filterDataByDatePeriod(data, datePeriod, key) {
+  const startDate = moment(datePeriod[0].startDate).valueOf();
+  const endDate = moment(datePeriod[0].endDate).valueOf();
+  const startDateDisplay = moment(datePeriod[0].startDate).format('DD-MMM-YYYY');
+  const endDateDisplay = moment(datePeriod[0].endDate).format('DD-MMM-YYYY');
 
-// function filterByMaterialGroupDesc(data, filterCriteria) {
-//   const filteredData = data.filter((row) => {
-//     return row["Material Group Desc"] === filterCriteria.MaterialGroupDesc;
-//   });
-//   return {
-//     key: "MaterialGroupDesc",
-//     colName: "Material Group Desc",
-//     keyValue: filteredData[0]["Material Group Desc"],
-//     data: filteredData,
-//   };
-// }
+  const filteredData =  data.filter(item => {
+    const itemDate = moment(item.DATE, 'DD-MMM-YYYY').valueOf();
+    return itemDate >= startDate && itemDate <= endDate;
+  });
 
-// function filterBySalesOffice(data, filterCriteria) {
-//   const filteredData = data.filter((row) => {
-//     return row["Sales Office Name"] === filterCriteria.SalesOffice;
-//   });
-//   return {
-//     key: "SalesOffice",
-//     colName: "Sales Office Name",
-//     keyValue: filteredData[0]["Sales Office Name"],
-//     data: filteredData,
-//   };
-// }
+  return {
+    key,
+    colName: FIELD_MAPPING[key],
+    keyValue: `${startDateDisplay} to ${endDateDisplay}`,
+    data: filteredData.length ? filteredData : [],
+  };
+}
 
-
-
-// const groupBy = (data, columnIndex) => {
-//   return data.reduce((acc, row) => {
-//     const key = row[columnIndex];
-//     if (!acc[key]) {
-//       acc[key] = [];
-//     }
-//     acc[key].push(row);
-//     return acc;
-//   }, {});
-// };
-
-// const aggregateData = (data, columnIndex, operation) => {
-//   switch (operation) {
-//     case "sum":
-//       return data.reduce((acc, row) => acc + parseFloat(row[columnIndex]), 0);
-//     case "avg":
-//       return (
-//         data.reduce((acc, row) => acc + parseFloat(row[columnIndex]), 0) /
-//         data.length
-//       );
-//     // Add more operations as needed
-//     default:
-//       return null;
-//   }
-// };
-
-// const filterAndAggregateData = (data, filterCol, filterValue, sumField) => {
-//   const filteredData = data
-//     .filter((row) => {
-//       return row[filterCol] === filterValue;
-//     })
-//     .reduce((acc, sum) => {
-//       return acc + parseFloat(sum[sumField]);
-//     });
-// };
-
-// function toPascalCase(str) {
-//   return str
-//     .replace(/(?:^\w|[A-Z]|\b\w|\s+)/g, (match, index) =>
-//       index === 0 ? match.toUpperCase() : match.toLowerCase()
-//     )
-//     .replace(/\s+/g, "");
-// }
-
-// function fromPascalCase(str) {
-//   return str.replace(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
-// }
 
 module.exports = {
   filterAndSum,

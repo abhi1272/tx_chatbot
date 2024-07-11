@@ -10,9 +10,14 @@ async function pendingOrderBook(req, res) {
   const parameters = req.body.queryResult.parameters;
 
   try {
+    let resp 
     // const resp = await fetchDataFromSQl(query, parameters);
 
-    const resp = await getQuantity(parameters, query);
+    if(intentName === 'Default Fallback Intent'){
+      resp = await getResponseFromModel(query);
+    }else{
+      resp = await getQuantity(parameters, query);
+    }
 
     const logEntry = {
       timestamp: new Date().toISOString(),
@@ -22,9 +27,14 @@ async function pendingOrderBook(req, res) {
       response: resp
     };
 
+
     // Append log entry to log file
     if(process.env.ADD_LOG){
       await appendLog(logEntry);
+    }
+
+    if(resp.includes('Empty')){
+      resp = `No DATA: ${JSON.stringify(logEntry)}`
     }
 
     return resp;
@@ -40,7 +50,7 @@ async function pendingOrderBook(req, res) {
     };
 
     if(process.env.ADD_LOG){
-      await appendLog(logEntry);
+      await appendLog(errorLogEntry);
     }
 
     return { error: 'An error occurred while processing your request.' };

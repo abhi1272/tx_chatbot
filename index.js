@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
 app.use('/dialogflow', dialogflowRoutes);
-app.use('/telegram', telegramRoutes);
+// app.use('/telegram', telegramRoutes);
 app.use('/sheet', sheetRoutes);
 app.use('/sam', samRoutes);
 fetchSheetData().then(() => {

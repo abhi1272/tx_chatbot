@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { telegramToken } = require('../config/config');
-const TelegramBot = require('node-telegram-bot-api');
+// const { telegramToken } = require('../config/config');
+// const TelegramBot = require('node-telegram-bot-api');
 const { getQuantity, pendingOrderBook } = require('../controller /samController');
 const { SAM_PROJECT_ID } = require('../constants/dialogflow');
-const bot = new TelegramBot(telegramToken);
+// const bot = new TelegramBot(telegramToken);
 
 
 router.post('/webhook', async (req, res) => {
@@ -21,27 +21,27 @@ router.post('/webhook', async (req, res) => {
     }
 
     // Extract chat ID if available
-    let chatId;
-    if (body.originalDetectIntentRequest && body.originalDetectIntentRequest.payload) {
-      // Example: Accessing chat ID for Telegram
-      chatId = body.originalDetectIntentRequest.payload.data?.chat?.id;
-    } else {
-      console.log('No payload or chat ID found in request:', body);
-      return res.status(400).send('No payload or chat ID found in request');
-    }
+    // let chatId;
+    // if (body.originalDetectIntentRequest && body.originalDetectIntentRequest.payload) {
+    //   // Example: Accessing chat ID for Telegram
+    //   chatId = body.originalDetectIntentRequest.payload.data?.chat?.id;
+    // } else {
+    //   console.log('No payload or chat ID found in request:', body);
+    //   return res.status(400).send('No payload or chat ID found in request');
+    // }
 
     // Send the response back to Telegram if chatId is available
-    if (chatId) {
-      try {
-        await bot.sendMessage(chatId, responseText);
-        console.log('Message sent to Telegram:', responseText);
-      } catch (error) {
-        console.error('Error sending message to Telegram:', error);
-        return res.status(500).send('Error sending message to Telegram');
-      }
-    } else {
-      console.log('No chat ID available to send message to Telegram');
-    }
+    // if (chatId) {
+    //   try {
+    //     await bot.sendMessage(chatId, responseText);
+    //     console.log('Message sent to Telegram:', responseText);
+    //   } catch (error) {
+    //     console.error('Error sending message to Telegram:', error);
+    //     return res.status(500).send('Error sending message to Telegram');
+    //   }
+    // } else {
+    //   console.log('No chat ID available to send message to Telegram');
+    // }
 
     return res.json({
       fulfillmentText: responseText,

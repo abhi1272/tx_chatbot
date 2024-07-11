@@ -1,3 +1,4 @@
+const _ = require("lodash");
 const stringSimilarity = require("string-similarity");
 const moment = require('moment');
 const {
@@ -13,12 +14,28 @@ function filterAndSum(data, filterCriteria) {
       return "Empty data array received";
     }
 
-    const filteredData = filter(data, filterCriteria);
+    let filteredData = filter(data, filterCriteria);
 
-    const sumResult = sumByColName(filteredData.data, filterCriteria);
-    const formattedSumResult = sumResult.toLocaleString();
+    filteredData  = filteredData.data ? filteredData.data : filteredData
 
-    return `${filterCriteria.ColumnName[0]} of ${filteredData.colName} ${filteredData.keyValue} is ${formattedSumResult} Kg.`;
+    let result 
+
+    if(filterCriteria?.measurement.length){
+      result = measureData(filteredData, filterCriteria)
+    }else{
+      result = sumByColName(filteredData, filterCriteria);
+
+      if(filterCriteria.ColumnName.includes('CONTRACT RATE')){
+        const resp = getContractRate(filteredData, filterCriteria);
+        result.push({
+          sumCol: 'CONTRACT RATE',
+          SumColVal: resp,
+        })
+      }
+    }
+
+    const concatenatedResult = Array.isArray(result)  ? result.map(item => `${item.sumCol}: ${item.SumColVal}`).join(', ') : result;
+    return `${concatenatedResult}.`;
   } catch (error) {
     console.error("Error in filterAndSum:", error);
     return "An error occurred while processing your request.";
@@ -27,22 +44,23 @@ function filterAndSum(data, filterCriteria) {
 
 function filter(data, filterCriteria) {
   try {
-    if (!data || data.length === 0) {
-      return "Empty data array received";
-    }
 
     const { ColumnName, ...criteria } = filterCriteria;
 
     let filteredData = data;
     Object.keys(criteria).forEach((key) => {
       if (criteria[key] !== "" && criteria[key].length !== 0) {
-        if (key === "CustomerName") {
-          filteredData = filterByCustomerName(filteredData.data ? filteredData.data : filteredData, filterCriteria);
+        filteredData = filteredData.data ? filteredData.data : filteredData
+        if (!filteredData || filteredData.length === 0) {
+          return "Empty data array received";
         }
-        if(key === "date-period"){
-          filteredData = filterDataByDatePeriod(filteredData, filterCriteria['date-period'], key);
+        if (key === "CustomerName") {
+          filteredData = filterByCustomerName(filteredData, filterCriteria);
+        }
+        if(key === "date-period" || key === "date"){
+          filteredData = filterDataByDatePeriod(filteredData, filterCriteria[key], key);
         } 
-        if (key !== "CustomerName" && key !== "date-period") {
+        if (key !== "CustomerName" && key !== "date-period" && key !== "date" && key !== "GroupBy" && key !== "measurement") {
           filteredData = filterByCategory(filteredData, criteria[key], key);
         }
       }
@@ -57,26 +75,32 @@ function filter(data, filterCriteria) {
 
 function filterByCategory(data, keyV, key) {
   try {
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       return "Empty data array received";
     }
 
     const filteredData = data.filter((row) => {
       if (key === 'CountofThreads' || key === 'Blend') {
+        if (Array.isArray(keyV)) {
+          return keyV.includes(+row[FIELD_MAPPING[key]]);
+        }
         return +row[FIELD_MAPPING[key]] === +keyV;
+      }
+      if (Array.isArray(keyV)) {
+        return keyV.includes(row[FIELD_MAPPING[key]]);
       }
       return row[FIELD_MAPPING[key]] === keyV;
     });
 
-    if (filteredData.length === 0) {
-      return "No matching data found";
-    }
+    // if (filteredData.length === 0) {
+    //   return "No matching data found";
+    // }
 
     return {
       key,
       colName: FIELD_MAPPING[key],
-      keyValue: filteredData.length ? filteredData[0][FIELD_MAPPING[key]] : "No matching data found",
-      data: filteredData.length ? filteredData : [],
+      keyValue: filteredData,
+      data: filteredData,
     };
   } catch (error) {
     console.error("Error in filterByCategory:", error);
@@ -86,7 +110,7 @@ function filterByCategory(data, keyV, key) {
 
 function filterByCustomerName(data, filterCriteria) {
   try {
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       return "Empty data array received";
     }
 
@@ -114,8 +138,8 @@ function filterByCustomerName(data, filterCriteria) {
     return {
       key: "CustomerName",
       colName: "customer",
-      keyValue: filteredData.length ? filteredData[0]["PARTY NAME"] : "No matching data found", 
-      data: filteredData.length ? filteredData : [],
+      keyValue: filteredData[0]['PARTY_NAME'], 
+      data: filteredData,
     };
   } catch (error) {
     console.error("Error in filterByCustomerName:", error);
@@ -125,35 +149,88 @@ function filterByCustomerName(data, filterCriteria) {
 
 function sumByColName(data, filterCriteria) {
   try {
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       return "Empty data array received";
     }
 
-    const columnName = filterCriteria.ColumnName.find(item => SUM_COLS.includes(item))
-    return data.reduce((acc, item) => {
-      const value = parseFloat(item[columnName]);
-      if (!isNaN(value)) {
-        return acc + value;
-      } else {
-        console.warn(`Invalid value for ${columnName}:`, item[columnName]);
-        return acc;
-      }
-    }, 0);
+    const sumColumnNames = filterCriteria.ColumnName.filter(item => SUM_COLS.includes(item));
+    
+    // Calculate sums for the specified columns
+    let result = []
+
+    sumColumnNames.map(sumCol => {
+
+      const sum = data.reduce((acc, item) => {
+        const value = parseFloat(item[sumCol]);
+        if (!isNaN(value)) {
+          return acc + value;
+        } else {
+          console.warn(`Invalid value for ${sumCol}:`, item[sumCol]);
+          return acc;
+        }
+      }, 0);
+
+      result.push({
+        sumCol,
+        SumColVal: `${sum.toLocaleString()} Kg`,
+      });
+    });
+
+    return result;
   } catch (error) {
     console.error("Error in sumByColName:", error);
     return "Error summing by column name";
   }
 }
 
-function groupByAndSum(data, parameters) {
+function getContractRate(data) {
   try {
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       return "Empty data array received";
     }
+    let contractValSum = 0
+    let contractQtyValSum = 0
 
-    const filterColName = Object.keys(parameters).find((key) =>
-      FILTER_COLS.includes(key) && parameters[key] !== "" && parameters[key] !== null && parameters[key] !== undefined
-    );
+    data.map((item) => {
+      const contractQty = parseFloat(item["CONTRACT QTY"]);
+      const contractVal = parseFloat(
+        item["CONTRACT QTY"] * item["CONTRACT RATE"]
+      );
+      if (!isNaN(contractQty) && !isNaN(contractVal)) {
+        contractValSum = contractValSum + contractVal;
+        contractQtyValSum = contractQtyValSum + contractQty;
+      } else {
+        console.warn(`Invalid value for ${sumCol}:`, item[sumCol]);
+        return acc;
+      }
+    });
+
+    const result = (contractValSum/contractQtyValSum).toFixed(2)
+
+    return result;
+  } catch (error) {
+    console.error("Error in getContractRate:", error);
+    return "Error summing by column name";
+  }
+}
+
+function groupByAndSum(data, parameters) {
+  try {
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return "Empty data array received";
+    }
+    // const filterColName = Object.keys(parameters).filter((key) =>
+    //   FILTER_COLS.includes(key) && parameters[key] !== "" && parameters[key] !== null && parameters[key] !== undefined
+    // );
+
+    let filterData = data;
+
+    filterData = filter(data, parameters);
+
+    if (!Array.isArray(filterData) || filterData.length === 0) {
+      return "Empty data array received";
+    }
 
     const sumColName = SUM_COLS.find((col) =>
       parameters.ColumnName.includes(col)
@@ -162,12 +239,6 @@ function groupByAndSum(data, parameters) {
     let groupByColName = parameters.ColumnName[0];
     if (parameters?.GroupBy?.length) {
       groupByColName = parameters.GroupBy;
-    }
-
-    let filterData = data;
-
-    if (filterColName) {
-      filterData = filter(data, parameters).data;
     }
 
     const result = filterData.reduce((acc, obj) => {
@@ -181,7 +252,13 @@ function groupByAndSum(data, parameters) {
 
     const sortedData = sortData(Object.values(result), `total ${sumColName}`, parameters.sortOrder || "desc").slice(0, 10);
     const finalResult = sortedData.map(item => `${item[groupByColName]} :- ${item[`total ${sumColName}`].toLocaleString()} Kg`).join('\n');
-    return finalResult;
+
+    const responseHeader = `${sumColName} by ${groupByColName}:\n`;
+
+    const formattedResponse = `${responseHeader}\n${finalResult}`;
+
+    return formattedResponse;
+    // return finalResult;
   } catch (error) {
     console.error("Error in groupByAndSum:", error);
     return "An error occurred while processing your request.";
@@ -208,22 +285,69 @@ const sortData = (data, columnIndex, order = "asc") => {
 };
 
 function filterDataByDatePeriod(data, datePeriod, key) {
-  const startDate = moment(datePeriod[0].startDate).valueOf();
-  const endDate = moment(datePeriod[0].endDate).valueOf();
-  const startDateDisplay = moment(datePeriod[0].startDate).format('DD-MMM-YYYY');
-  const endDateDisplay = moment(datePeriod[0].endDate).format('DD-MMM-YYYY');
 
-  const filteredData =  data.filter(item => {
-    const itemDate = moment(item.DATE, 'DD-MMM-YYYY').valueOf();
-    return itemDate >= startDate && itemDate <= endDate;
-  });
+  let filteredData
+  let keyValue
+
+  if (datePeriod[0].startDate) {
+    let startDate = moment(datePeriod[0].startDate).valueOf();
+    let endDate = moment(datePeriod[0].endDate).valueOf();
+    let startDateDisplay = moment(datePeriod[0].startDate).format("DD-MMM-YYYY");
+    let endDateDisplay = moment(datePeriod[0].endDate).format("DD-MMM-YYYY");
+    filteredData =  data.filter(item => {
+      const itemDate = moment(item.DATE, 'DD-MMM-YYYY').valueOf();
+      return itemDate >= startDate && itemDate <= endDate;
+    });
+    keyValue = `${startDateDisplay} to ${endDateDisplay}`
+  } else {
+    let date = moment(datePeriod[0]).format('DD-MMM-YYYY')
+    filteredData =  data.filter(item => {
+      const itemDate = moment(item.DATE, 'DD-MMM-YYYY')
+      return itemDate._i === date
+    });
+    keyValue = `${date}`
+  }
+
+
 
   return {
     key,
     colName: FIELD_MAPPING[key],
-    keyValue: `${startDateDisplay} to ${endDateDisplay}`,
-    data: filteredData.length ? filteredData : [],
+    keyValue,
+    data: filteredData,
   };
+}
+
+function measureData(data, filterCriteria) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return "Empty data array received";
+  }
+
+  let result;
+
+  const colName = filterCriteria.ColumnName[0];
+
+  // Convert string values to numbers for the specified column
+  const numericData = data.map(item => ({
+    ...item,
+    [colName]: parseFloat(item[colName])
+  }));
+
+  if (filterCriteria.measurement === 'Maximum') {
+    result = _.maxBy(numericData, item => item[colName]);
+  }
+
+  if (filterCriteria.measurement === 'Minimum') {
+    result = _.minBy(numericData, item => item[colName]);
+  }
+
+  if (filterCriteria.measurement === 'Average') {
+    const sum = _.sumBy(numericData, item => item[colName]);
+    const avg = sum / numericData.length;
+    return avg;
+  }
+
+  return result ? result[colName] : 'No result found';
 }
 
 

@@ -1,5 +1,6 @@
-const SAM_PROJECT_ID = "exalted-gamma-428111-c9";
+// const SAM_PROJECT_ID = "exalted-gamma-428111-c9";
 
+const SAM_PROJECT_ID = 'pending-order-book'
 const SAM_INTENTS = ["getQuantity"];
 
 const FIELD_MAPPING = {
@@ -25,7 +26,6 @@ const SUM_COLS = [
   "SALES ORDER QTY",
   "CONTRACT QTY",
   "BILLED QTY",
-  "BALANCE QTY",
   "DELIVERED QTY"
 ];
 

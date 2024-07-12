@@ -29,6 +29,20 @@ const SUM_COLS = [
   "DELIVERED QTY"
 ];
 
+const GROUP_BY_COLS = [
+    "Yarn Category",
+    "SALE OFFICE",
+    "PARTY NAME",
+    "DATE",
+    "COUNT W/O SHADE",
+    "MATERIAL GROUP",
+    "Material Group Desc",
+    "Count of Yarn",
+    "Blend",
+    "Business Line",
+    "Sales Office Name"
+  ];
+
 const FIELDS = [
   "SALE OFFICE",
   "CUSTOMER",
@@ -142,5 +156,6 @@ module.exports = {
   FIELD_MAPPING,
   FILTER_COLS,
   SUM_COLS,
-  columnMapping
+  columnMapping,
+  GROUP_BY_COLS
 };

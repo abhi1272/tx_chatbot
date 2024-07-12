@@ -29,8 +29,6 @@ function filterAndSum(data, filterCriteria) {
     const concatenatedResult = Array.isArray(result)  ? result.map(item => `${item.sumCol}: ${item.SumColVal}`).join(', ') : result;
     // return `${concatenatedResult}.`;
     const response = `
-Here are the details:-
----------------------
 ${filterStr.length ? 'Filter by:\n' + filterStr : ''}
 ---------------------
 ${concatenatedResult}
@@ -232,14 +230,11 @@ function getContractRate(data) {
 
 function groupByAndSum(data, parameters) {
   try {
-
     if (!Array.isArray(data) || data.length === 0) {
       return "Empty data array received";
     }
-    // const filterColName = Object.keys(parameters).filter((key) =>
-    //   FILTER_COLS.includes(key) && parameters[key] !== "" && parameters[key] !== null && parameters[key] !== undefined
-    // );
 
+    let projectedCount = 100
 
     const { filteredData, filterStr } = filter(data, parameters);
 
@@ -251,36 +246,36 @@ function groupByAndSum(data, parameters) {
       parameters.ColumnName.includes(col)
     );
 
-    if(parameters.ColumnName[0] === "CONTRACT RATE"){
-      sumColName = parameters.ColumnName[0]
+    if (parameters.ColumnName[0] === "CONTRACT RATE") {
+      sumColName = parameters.ColumnName[0];
     }
 
-    let groupByColName = parameters.ColumnName[0];
+    let groupByColNames = [parameters.ColumnName[0]];
     if (parameters?.GroupBy?.length) {
-      groupByColName = parameters.GroupBy;
+      groupByColNames = parameters.GroupBy;
     }
 
     const result = filteredData.reduce((acc, obj) => {
-      let key = obj[groupByColName];
+      const key = groupByColNames.map(col => obj[col]).join('|');
       if (!acc[key]) {
         acc[key] = {
-          [groupByColName]: key,
+          group: key,
           [`total ${sumColName}`]: 0,
           totalContractQty: 0,
           totalContractRateTimesQty: 0,
         };
       }
-    
+
       if (sumColName === 'contract rate') {
-        acc[key].totalContractQty += parseFloat(obj['contract qty'], 10);
-        acc[key].totalContractRateTimesQty += parseFloat(obj['contract rate']) * parseFloat(obj['contract qty'], 10);
+        acc[key].totalContractQty += parseFloat(obj['contract qty'], 100);
+        acc[key].totalContractRateTimesQty += parseFloat(obj['contract rate']) * parseFloat(obj['contract qty'], 100);
       } else {
-        acc[key][`total ${sumColName}`] += parseFloat(obj[sumColName], 10);
+        acc[key][`total ${sumColName}`] += parseFloat(obj[sumColName], 100);
       }
-    
+
       return acc;
     }, {});
-    
+
     Object.values(result).forEach(group => {
       if (sumColName === 'contract rate') {
         group[`total ${sumColName}`] = (group.totalContractRateTimesQty / group.totalContractQty).toFixed(2);
@@ -289,31 +284,34 @@ function groupByAndSum(data, parameters) {
       }
     });
 
-    const sortedData = sortData(Object.values(result), `total ${sumColName}`, parameters.sortOrder || "desc").slice(0, 10);
-    const finalResult = sortedData.map(item => `${item[groupByColName]} :- ${item[`total ${sumColName}`].toLocaleString()} Kg`).join('\n');
+    let order = 'desc'
 
-    const responseHeader = `${groupByColName} : ${sumColName}`;
+    if(parameters.measurement.includes('top')){
+      projectedCount = parameters.measurement[1]
+      order = 'desc'
+    }
 
-    // const formattedResponse = `${responseHeader}\n${finalResult}`;
+    const sortedData = sortData(Object.values(result), `total ${sumColName}`, parameters.sortOrder || order).slice(0, projectedCount);
+    const finalResult = sortedData.map(item => `${item.group.split('|').join(', ')} :- ${item[`total ${sumColName}`].toLocaleString()} Kg`).join('\n');
 
-    // return formattedResponse;
+    const responseHeader = `${groupByColNames.join(', ')} : ${sumColName}`;
+
     const response = `
-Here are the details:-
----------------------
 ${filterStr.length ? 'Filter by:\n' + filterStr : ''}
 Group by:
-${groupByColName}
+${groupByColNames.join(', ')}
 ---------------------
 ${responseHeader}
 ${finalResult}
     `.trim();
+
     return response;
-    // return finalResult;
   } catch (error) {
     console.error("Error in groupByAndSum:", error);
     return "An error occurred while processing your request.";
   }
 }
+
 
 function normalizeString(str) {
   return str.replace(/\./g, "").toLowerCase();

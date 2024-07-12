@@ -2,16 +2,28 @@ const stringSimilarity = require("string-similarity");
 const { filterAndSum, groupByAndSum } = require("../utils/utils");
 const cacheMethods = require("./cache");
 const { fetchSheetData } = require("./sheet");
+const { GROUP_BY_COLS, SUM_COLS } = require("../constants/dialogflow");
 
 async function getQuantity(parameters, query) {
   try {
     let data = cacheMethods.get("sheetData");
-    console.log('----data loaded------')
-    if(!data || data?.length === 0){
-      console.log('----data not found------')
-      data = await fetchSheetData()
+    console.log("----data loaded------");
+    if (!data || data?.length === 0) {
+      console.log("----data not found------");
+      data = await fetchSheetData();
     }
     let processedData;
+
+    const filteredGroupByCol = parameters.ColumnName.filter((col) =>
+      GROUP_BY_COLS.includes(col)
+    );
+    const filteredSumCol = parameters.ColumnName.filter((col) =>
+      SUM_COLS.includes(col)
+    );
+
+    if (filteredSumCol.length) {
+      parameters.GroupBy.push(filteredGroupByCol);
+    }
 
     if (parameters.GroupBy.length) {
       processedData = groupByAndSum(data, parameters);
@@ -19,7 +31,11 @@ async function getQuantity(parameters, query) {
       processedData = filterAndSum(data, parameters);
     }
 
-    return processedData;
+    console.log('processedData', processedData)
+
+    return `Here are the details:-
+---------------------
+${processedData}`;
   } catch (error) {
     return "Error processing data";
   }

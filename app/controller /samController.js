@@ -19,19 +19,19 @@ async function pendingOrderBook(req, res) {
       resp = await getQuantity(parameters, query);
     }
 
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      intentName,
-      query,
-      parameters,
-      response: resp
-    };
+    // const logEntry = {
+    //   timestamp: new Date().toISOString(),
+    //   intentName,
+    //   query,
+    //   parameters,
+    //   response: resp
+    // };
 
 
     // Append log entry to log file
-    if(process.env.ADD_LOG){
-      await appendLog(logEntry);
-    }
+    // if(process.env.ADD_LOG){
+    //   await appendLog(logEntry);
+    // }
 
     if(!resp.includes('Filter by:') || !resp.includes('Group by:')){
       resp = `No Data Found! Please Refine your Query!\n-------------\nyou can ask like:-\nGive me details of customer with balance qty\nbalance qty by blend`
@@ -41,17 +41,17 @@ async function pendingOrderBook(req, res) {
   } catch (error) {
     console.error('Error in pendingOrderBook:', error);
 
-    const errorLogEntry = {
-      timestamp: new Date().toISOString(),
-      intentName,
-      query,
-      parameters,
-      error: error.message
-    };
+    // const errorLogEntry = {
+    //   timestamp: new Date().toISOString(),
+    //   intentName,
+    //   query,
+    //   parameters,
+    //   error: error.message
+    // };
 
-    if(process.env.ADD_LOG){
-      await appendLog(errorLogEntry);
-    }
+    // if(process.env.ADD_LOG){
+    //   await appendLog(errorLogEntry);
+    // }
 
     return { error: 'An error occurred while processing your request.' };
   }

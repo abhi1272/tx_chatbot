@@ -14,7 +14,7 @@ function filterAndSum(data, filterCriteria) {
       return "Empty data array received";
     }
 
-    let filteredData = filter(data, filterCriteria);
+    let { filteredData, filterStr } = filter(data, filterCriteria);
 
     filteredData  = filteredData.data ? filteredData.data : filteredData
 
@@ -24,18 +24,18 @@ function filterAndSum(data, filterCriteria) {
       result = measureData(filteredData, filterCriteria)
     }else{
       result = sumByColName(filteredData, filterCriteria);
-
-      if(filterCriteria.ColumnName.includes('CONTRACT RATE')){
-        const resp = getContractRate(filteredData, filterCriteria);
-        result.push({
-          sumCol: 'CONTRACT RATE',
-          SumColVal: resp,
-        })
-      }
     }
 
     const concatenatedResult = Array.isArray(result)  ? result.map(item => `${item.sumCol}: ${item.SumColVal}`).join(', ') : result;
-    return `${concatenatedResult}.`;
+    // return `${concatenatedResult}.`;
+    const response = `
+Here are the details:-
+---------------------
+${filterStr.length ? 'Filter by:\n' + filterStr : ''}
+---------------------
+${concatenatedResult}
+    `;
+    return response
   } catch (error) {
     console.error("Error in filterAndSum:", error);
     return "An error occurred while processing your request.";
@@ -48,7 +48,9 @@ function filter(data, filterCriteria) {
     const { ColumnName, ...criteria } = filterCriteria;
 
     let filteredData = data;
-    Object.keys(criteria).forEach((key) => {
+    let filterStr = ``
+    const criteriaKeys = Object.keys(criteria);
+    criteriaKeys.forEach((key, index) => {
       if (criteria[key] !== "" && criteria[key].length !== 0) {
         filteredData = filteredData.data ? filteredData.data : filteredData
         if (!filteredData || filteredData.length === 0) {
@@ -56,17 +58,23 @@ function filter(data, filterCriteria) {
         }
         if (key === "CustomerName") {
           filteredData = filterByCustomerName(filteredData, filterCriteria);
+          filterStr += `${filteredData.colName} : ${filteredData.keyValue}\n`
         }
         if(key === "date-period" || key === "date"){
           filteredData = filterDataByDatePeriod(filteredData, filterCriteria[key], key);
+          filterStr += `${filteredData.colName} : ${filteredData.keyValue}\n`
         } 
         if (key !== "CustomerName" && key !== "date-period" && key !== "date" && key !== "GroupBy" && key !== "measurement") {
           filteredData = filterByCategory(filteredData, criteria[key], key);
+          filterStr += `${filteredData.colName} : ${filteredData.keyValue}\n`
         }
       }
-    });
 
-    return filteredData;
+    });
+    if (filterStr.endsWith('\n')) {
+      filterStr = filterStr.slice(0, -1);
+    }
+    return { filteredData, filterStr };
   } catch (error) {
     console.error("Error in filter:", error);
     return "Error filtering data";
@@ -99,7 +107,7 @@ function filterByCategory(data, keyV, key) {
     return {
       key,
       colName: FIELD_MAPPING[key],
-      keyValue: filteredData,
+      keyValue: filteredData[0][FIELD_MAPPING[key]],
       data: filteredData,
     };
   } catch (error) {
@@ -138,7 +146,7 @@ function filterByCustomerName(data, filterCriteria) {
     return {
       key: "CustomerName",
       colName: "customer",
-      keyValue: filteredData[0]['PARTY_NAME'], 
+      keyValue: filteredData[0]['PARTY NAME'], 
       data: filteredData,
     };
   } catch (error) {
@@ -175,6 +183,14 @@ function sumByColName(data, filterCriteria) {
         SumColVal: `${sum.toLocaleString()} Kg`,
       });
     });
+
+    if (filterCriteria.ColumnName.includes("CONTRACT RATE")) {
+      const resp = getContractRate(data, filterCriteria);
+      result.push({
+        sumCol: "CONTRACT RATE",
+        SumColVal: resp,
+      });
+    }
 
     return result;
   } catch (error) {
@@ -224,40 +240,74 @@ function groupByAndSum(data, parameters) {
     //   FILTER_COLS.includes(key) && parameters[key] !== "" && parameters[key] !== null && parameters[key] !== undefined
     // );
 
-    let filterData = data;
 
-    filterData = filter(data, parameters);
+    const { filteredData, filterStr } = filter(data, parameters);
 
-    if (!Array.isArray(filterData) || filterData.length === 0) {
+    if (!Array.isArray(filteredData) || filteredData.length === 0) {
       return "Empty data array received";
     }
 
-    const sumColName = SUM_COLS.find((col) =>
+    let sumColName = SUM_COLS.find((col) =>
       parameters.ColumnName.includes(col)
     );
+
+    if(parameters.ColumnName[0] === "CONTRACT RATE"){
+      sumColName = parameters.ColumnName[0]
+    }
 
     let groupByColName = parameters.ColumnName[0];
     if (parameters?.GroupBy?.length) {
       groupByColName = parameters.GroupBy;
     }
 
-    const result = filterData.reduce((acc, obj) => {
+    const result = filteredData.reduce((acc, obj) => {
       let key = obj[groupByColName];
       if (!acc[key]) {
-        acc[key] = { [groupByColName]: key, [`total ${sumColName}`]: 0 };
+        acc[key] = {
+          [groupByColName]: key,
+          [`total ${sumColName}`]: 0,
+          totalContractQty: 0,
+          totalContractRateTimesQty: 0,
+        };
       }
-      acc[key][`total ${sumColName}`] += +obj[sumColName];
+    
+      if (sumColName === 'contract rate') {
+        acc[key].totalContractQty += parseFloat(obj['contract qty'], 10);
+        acc[key].totalContractRateTimesQty += parseFloat(obj['contract rate']) * parseFloat(obj['contract qty'], 10);
+      } else {
+        acc[key][`total ${sumColName}`] += parseFloat(obj[sumColName], 10);
+      }
+    
       return acc;
     }, {});
+    
+    Object.values(result).forEach(group => {
+      if (sumColName === 'contract rate') {
+        group[`total ${sumColName}`] = (group.totalContractRateTimesQty / group.totalContractQty).toFixed(2);
+        delete group.totalContractQty;
+        delete group.totalContractRateTimesQty;
+      }
+    });
 
     const sortedData = sortData(Object.values(result), `total ${sumColName}`, parameters.sortOrder || "desc").slice(0, 10);
     const finalResult = sortedData.map(item => `${item[groupByColName]} :- ${item[`total ${sumColName}`].toLocaleString()} Kg`).join('\n');
 
-    const responseHeader = `${sumColName} by ${groupByColName}:\n`;
+    const responseHeader = `${groupByColName} : ${sumColName}`;
 
-    const formattedResponse = `${responseHeader}\n${finalResult}`;
+    // const formattedResponse = `${responseHeader}\n${finalResult}`;
 
-    return formattedResponse;
+    // return formattedResponse;
+    const response = `
+Here are the details:-
+---------------------
+${filterStr.length ? 'Filter by:\n' + filterStr : ''}
+Group by:
+${groupByColName}
+---------------------
+${responseHeader}
+${finalResult}
+    `.trim();
+    return response;
     // return finalResult;
   } catch (error) {
     console.error("Error in groupByAndSum:", error);
@@ -347,7 +397,7 @@ function measureData(data, filterCriteria) {
     return avg;
   }
 
-  return result ? result[colName] : 'No result found';
+  return result ? `${filterCriteria.measurement} value of customer ${result['PARTY NAME']} is ${result[colName].toLocaleString()} Kg` : 'No result found';
 }
 
 

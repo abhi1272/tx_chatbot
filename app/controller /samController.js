@@ -33,7 +33,7 @@ async function pendingOrderBook(req, res) {
     //   await appendLog(logEntry);
     // }
 
-    if(!resp.includes('Filter by:') || !resp.includes('Group by:')){
+    if(!resp.includes('Filter by:') && !resp.includes('Group by:')){
       resp = `No Data Found! Please Refine your Query!\n-------------\nyou can ask like:-\nGive me details of customer with balance qty\nbalance qty by blend`
     }
 

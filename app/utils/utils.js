@@ -234,8 +234,6 @@ function groupByAndSum(data, parameters) {
       return "Empty data array received";
     }
 
-    let projectedCount = 100
-
     const { filteredData, filterStr } = filter(data, parameters);
 
     if (!Array.isArray(filteredData) || filteredData.length === 0) {
@@ -250,49 +248,48 @@ function groupByAndSum(data, parameters) {
       sumColName = parameters.ColumnName[0];
     }
 
-    let groupByColNames = [parameters.ColumnName[0]];
+    let groupByColNames = []
     if (parameters?.GroupBy?.length) {
-      groupByColNames = parameters.GroupBy;
+      groupByColNames = [...groupByColNames,...parameters.GroupBy];
     }
 
-    const result = filteredData.reduce((acc, obj) => {
-      const key = groupByColNames.map(col => obj[col]).join('|');
-      if (!acc[key]) {
-        acc[key] = {
-          group: key,
+    const parseDate = (dateStr) => {
+      return moment(dateStr, 'D-MMM-YYYY').format('YYYY-MM-DD');
+    };
+
+    const result = _(filteredData)
+      .groupBy(item => groupByColNames.map(col => col.toLowerCase() === 'date' ? parseDate(item[FIELD_MAPPING[col]]) : item[col]).join('|'))
+      .mapValues(items => {
+        const initialValue = {
           [`total ${sumColName}`]: 0,
           totalContractQty: 0,
           totalContractRateTimesQty: 0,
         };
-      }
 
-      if (sumColName === 'contract rate') {
-        acc[key].totalContractQty += parseFloat(obj['contract qty'], 100);
-        acc[key].totalContractRateTimesQty += parseFloat(obj['contract rate']) * parseFloat(obj['contract qty'], 100);
-      } else {
-        acc[key][`total ${sumColName}`] += parseFloat(obj[sumColName], 100);
-      }
+        const aggregated = items.reduce((acc, obj) => {
+          if (sumColName === 'CONTRACT RATE') {
+            acc.totalContractQty += parseFloat(obj['CONTRACT QTY']);
+            acc.totalContractRateTimesQty += parseFloat(obj['CONTRACT RATE']) * parseFloat(obj['CONTRACT QTY']);
+          } else {
+            acc[`total ${sumColName}`] += parseFloat(obj[sumColName]);
+          }
+          return acc;
+        }, initialValue);
 
-      return acc;
-    }, {});
+        if (sumColName === 'CONTRACT RATE') {
+          aggregated[`total ${sumColName}`] = parseFloat((aggregated.totalContractRateTimesQty / aggregated.totalContractQty).toFixed(2));
+          delete aggregated.totalContractQty;
+          delete aggregated.totalContractRateTimesQty;
+        }
 
-    Object.values(result).forEach(group => {
-      if (sumColName === 'contract rate') {
-        group[`total ${sumColName}`] = (group.totalContractRateTimesQty / group.totalContractQty).toFixed(2);
-        delete group.totalContractQty;
-        delete group.totalContractRateTimesQty;
-      }
-    });
+        return aggregated;
+      })
+      .value();
 
-    let order = 'desc'
-
-    if(parameters.measurement.includes('top')){
-      projectedCount = parameters.measurement[1]
-      order = 'desc'
-    }
-
-    const sortedData = sortData(Object.values(result), `total ${sumColName}`, parameters.sortOrder || order).slice(0, projectedCount);
-    const finalResult = sortedData.map(item => `${item.group.split('|').join(', ')} :- ${item[`total ${sumColName}`].toLocaleString()} Kg`).join('\n');
+    const sortedData = _.orderBy(Object.entries(result), ([key, value]) => value[`total ${sumColName}`], parameters.sortOrder || 'desc')
+      .slice(0, 100)
+      .map(([key, value]) => `${key.split('|').join(', ')} :- ${value[`total ${sumColName}`].toLocaleString()} ${sumColName === 'CONTRACT RATE' ? '' : 'Kg'}`)
+      .join('\n');
 
     const responseHeader = `${groupByColNames.join(', ')} : ${sumColName}`;
 
@@ -302,7 +299,7 @@ Group by:
 ${groupByColNames.join(', ')}
 ---------------------
 ${responseHeader}
-${finalResult}
+${sortedData}
     `.trim();
 
     return response;
@@ -311,6 +308,7 @@ ${finalResult}
     return "An error occurred while processing your request.";
   }
 }
+
 
 
 function normalizeString(str) {

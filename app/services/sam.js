@@ -14,15 +14,11 @@ async function getQuantity(parameters, query) {
     }
     let processedData;
 
-    const filteredGroupByCol = parameters.ColumnName.filter((col) =>
-      GROUP_BY_COLS.includes(col)
-    );
-    const filteredSumCol = parameters.ColumnName.filter((col) =>
-      SUM_COLS.includes(col)
-    );
+    const filteredGroupByCol = parameters.ColumnName.filter(col => GROUP_BY_COLS.includes(col));
+    const filteredSumCol = parameters.ColumnName.filter(col => SUM_COLS.includes(col));
 
     if (filteredSumCol.length) {
-      parameters.GroupBy.push(filteredGroupByCol);
+      parameters.GroupBy = [...parameters.GroupBy,...filteredGroupByCol]
     }
 
     if (parameters.GroupBy.length) {

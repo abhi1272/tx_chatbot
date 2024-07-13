@@ -10,7 +10,8 @@ const FIELD_MAPPING = {
   BusinessLine: "Business Line",
   Blend: "Blend",
   CountofThreads : "Count of Threads",
-  "date-period" : "Date"
+  "date-period" : "Date",
+  "Date": "DATE"
 };
 
 const FILTER_COLS = [
@@ -26,7 +27,8 @@ const SUM_COLS = [
   "SALES ORDER QTY",
   "CONTRACT QTY",
   "BILLED QTY",
-  "DELIVERED QTY"
+  "DELIVERED QTY",
+  "CONTRACT RATE"
 ];
 
 const GROUP_BY_COLS = [

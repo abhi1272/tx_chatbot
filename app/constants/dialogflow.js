@@ -28,7 +28,8 @@ const SUM_COLS = [
   "CONTRACT QTY",
   "BILLED QTY",
   "DELIVERED QTY",
-  "CONTRACT RATE"
+  "CONTRACT RATE",
+  "Contract Rate Converted"
 ];
 
 const GROUP_BY_COLS = [

@@ -159,8 +159,8 @@ function sumByColName(data, filterCriteria) {
       return "Empty data array received";
     }
 
-    const sumColumnNames = filterCriteria.ColumnName.filter(item => SUM_COLS.includes(item));
-    
+    let sumColumnNames = filterCriteria.ColumnName.filter(item => SUM_COLS.includes(item));
+    sumColumnNames = sumColumnNames.filter(col => col !== 'Contract Rate Converted')
     // Calculate sums for the specified columns
     let result = []
 
@@ -182,10 +182,10 @@ function sumByColName(data, filterCriteria) {
       });
     });
 
-    if (filterCriteria.ColumnName.includes("CONTRACT RATE")) {
+    if (filterCriteria.ColumnName.includes("Contract Rate Converted")) {
       const resp = getContractRate(data, filterCriteria);
       result.push({
-        sumCol: "CONTRACT RATE",
+        sumCol: "Contract Rate Converted",
         SumColVal: resp,
       });
     }
@@ -208,7 +208,7 @@ function getContractRate(data) {
     data.map((item) => {
       const contractQty = parseFloat(item["CONTRACT QTY"]);
       const contractVal = parseFloat(
-        item["CONTRACT QTY"] * item["CONTRACT RATE"]
+        item["CONTRACT QTY"] * item["Contract Rate Converted"]
       );
       if (!isNaN(contractQty) && !isNaN(contractVal)) {
         contractValSum = contractValSum + contractVal;
@@ -219,7 +219,7 @@ function getContractRate(data) {
       }
     });
 
-    const result = (contractValSum/contractQtyValSum).toFixed(2)
+    const result = `\u20B9 ${(contractValSum/contractQtyValSum).toFixed(2)}`
 
     return result;
   } catch (error) {
@@ -244,7 +244,7 @@ function groupByAndSum(data, parameters) {
       parameters.ColumnName.includes(col)
     );
 
-    if (parameters.ColumnName[0] === "CONTRACT RATE") {
+    if (parameters.ColumnName[0] === "Contract Rate Converted") {
       sumColName = parameters.ColumnName[0];
     }
 
@@ -267,17 +267,17 @@ function groupByAndSum(data, parameters) {
         };
 
         const aggregated = items.reduce((acc, obj) => {
-          if (sumColName === 'CONTRACT RATE') {
+          if (sumColName === 'Contract Rate Converted') {
             acc.totalContractQty += parseFloat(obj['CONTRACT QTY']);
-            acc.totalContractRateTimesQty += parseFloat(obj['CONTRACT RATE']) * parseFloat(obj['CONTRACT QTY']);
+            acc.totalContractRateTimesQty += parseFloat(obj['Contract Rate Converted']) * parseFloat(obj['CONTRACT QTY']);
           } else {
             acc[`total ${sumColName}`] += parseFloat(obj[sumColName]);
           }
           return acc;
         }, initialValue);
 
-        if (sumColName === 'CONTRACT RATE') {
-          aggregated[`total ${sumColName}`] = parseFloat((aggregated.totalContractRateTimesQty / aggregated.totalContractQty).toFixed(2));
+        if (sumColName === 'Contract Rate Converted') {
+          aggregated[`total ${sumColName}`] = `\u20B9 ${parseFloat((aggregated.totalContractRateTimesQty / aggregated.totalContractQty).toFixed(2))}`;
           delete aggregated.totalContractQty;
           delete aggregated.totalContractRateTimesQty;
         }
@@ -288,7 +288,7 @@ function groupByAndSum(data, parameters) {
 
     const sortedData = _.orderBy(Object.entries(result), ([key, value]) => value[`total ${sumColName}`], parameters.sortOrder || 'desc')
       .slice(0, 100)
-      .map(([key, value]) => `${key.split('|').join(', ')} :- ${value[`total ${sumColName}`].toLocaleString()} ${sumColName === 'CONTRACT RATE' ? '' : 'Kg'}`)
+      .map(([key, value]) => `${key.split('|').join(', ')} :- ${value[`total ${sumColName}`].toLocaleString()} ${sumColName === 'Contract Rate Converted' ? '' : 'Kg'}`)
       .join('\n');
 
     const responseHeader = `${groupByColNames.join(', ')} : ${sumColName}`;

@@ -27,8 +27,6 @@ async function getQuantity(parameters, query) {
       processedData = filterAndSum(data, parameters);
     }
 
-    console.log('processedData', processedData)
-
     return `Here are the details:-
 ---------------------
 ${processedData}`;

@@ -33,7 +33,10 @@ async function pendingOrderBook(req, res) {
     //   await appendLog(logEntry);
     // }
 
-    if(!resp.includes('Filter by:') && !resp.includes('Group by:')){
+    if(resp.includes('Empty')){
+      resp = `No Data Found! Try Changing Your Query.` 
+    }
+    else if(!resp.includes('Filter by:') && !resp.includes('Group by:')){
       resp = `No Data Found! Please Refine your Query!\n-------------\nTips for Effective Use:
 Simply ask questions using output columns, Filters & Group By as mentioned below. To use GroupBy functionality use keyword 'by' before column names while creating questions & keyword 'Customer' before customer Names.
 

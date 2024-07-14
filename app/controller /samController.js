@@ -3,6 +3,7 @@ const { columnMapping } = require("../constants/dialogflow");
 const { getResponseFromModel } = require("../services/geminiClient");
 const { getQuantity } = require("../services/sam");
 const { runQuery } = require("../services/sqllite");
+const { callApi } = require('../utils/process');
 
 async function pendingOrderBook(req, res) {
   const intentName = req.body.queryResult.intent.displayName;
@@ -11,6 +12,10 @@ async function pendingOrderBook(req, res) {
 
   try {
     let resp 
+    let userDetails = {}
+    if(Object.keys(req.body.originalDetectIntentRequest.payload).length){
+      userDetails = req.body.originalDetectIntentRequest.payload.data.event.message.sender
+    }
     // const resp = await fetchDataFromSQl(query, parameters);
 
     if(intentName === 'Default Fallback Intent'){
@@ -19,15 +24,16 @@ async function pendingOrderBook(req, res) {
       resp = await getQuantity(parameters, query);
     }
 
-    // const logEntry = {
-    //   timestamp: new Date().toISOString(),
-    //   intentName,
-    //   query,
-    //   parameters,
-    //   response: resp
-    // };
+    const logEntry = {
+      user: userDetails,
+      timestamp: new Date().toISOString(),
+      intentName,
+      query,
+      parameters,
+      response: resp
+    };
 
-
+    await callApi('POST', 'https://om-agency-bk.vercel.app/api/v1/log/add', logEntry)
     // Append log entry to log file
     // if(process.env.ADD_LOG){
     //   await appendLog(logEntry);
@@ -54,14 +60,16 @@ Few sample queries for your help:
   } catch (error) {
     console.error('Error in pendingOrderBook:', error);
 
-    // const errorLogEntry = {
-    //   timestamp: new Date().toISOString(),
-    //   intentName,
-    //   query,
-    //   parameters,
-    //   error: error.message
-    // };
+    const errorLogEntry = {
+      user: userDetails,
+      timestamp: new Date().toISOString(),
+      intentName,
+      query,
+      parameters,
+      error: error.message
+    };
 
+    await callApi('POST', 'https://om-agency-bk.vercel.app/api/v1/log/add', errorLogEntry)
     // if(process.env.ADD_LOG){
     //   await appendLog(errorLogEntry);
     // }

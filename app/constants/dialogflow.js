@@ -11,6 +11,7 @@ const FIELD_MAPPING = {
   Blend: "Blend",
   CountofThreads : "Count of Threads",
   "date-period" : "Date",
+  "date" : "Date",
   "Date": "DATE"
 };
 

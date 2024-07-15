@@ -141,10 +141,15 @@ function filterByCustomerName(data, filterCriteria) {
       return "No matching customer found";
     }
 
+    const customerNames = _.uniqBy(filteredData, function (e) {
+      return e['PARTY NAME'];
+    });
+
+  
     return {
       key: "CustomerName",
       colName: "customer",
-      keyValue: filteredData[0]['PARTY NAME'], 
+      keyValue: customerNames.map(item => `${item['PARTY NAME']}`).join(', '), 
       data: filteredData,
     };
   } catch (error) {
@@ -240,17 +245,15 @@ function groupByAndSum(data, parameters) {
       return "Empty data array received";
     }
 
-    let sumColName = SUM_COLS.find((col) =>
-      parameters.ColumnName.includes(col)
-    );
+    let sumColNames = parameters.ColumnName.filter(col => SUM_COLS.includes(col));
 
-    if (parameters.ColumnName[0] === "Contract Rate Converted") {
-      sumColName = parameters.ColumnName[0];
+    if (parameters.ColumnName.includes("Contract Rate Converted")) {
+      sumColNames.push("Contract Rate Converted");
     }
 
-    let groupByColNames = []
+    let groupByColNames = [];
     if (parameters?.GroupBy?.length) {
-      groupByColNames = [...groupByColNames,...parameters.GroupBy];
+      groupByColNames = [...groupByColNames, ...parameters.GroupBy];
     }
 
     const parseDate = (dateStr) => {
@@ -260,24 +263,28 @@ function groupByAndSum(data, parameters) {
     const result = _(filteredData)
       .groupBy(item => groupByColNames.map(col => col.toLowerCase() === 'date' ? parseDate(item[FIELD_MAPPING[col]]) : item[col]).join('|'))
       .mapValues(items => {
-        const initialValue = {
-          [`total ${sumColName}`]: 0,
+        const initialValue = sumColNames.reduce((acc, col) => {
+          acc[`total ${col}`] = 0;
+          return acc;
+        }, {
           totalContractQty: 0,
           totalContractRateTimesQty: 0,
-        };
+        });
 
         const aggregated = items.reduce((acc, obj) => {
-          if (sumColName === 'Contract Rate Converted') {
-            acc.totalContractQty += parseFloat(obj['CONTRACT QTY']);
-            acc.totalContractRateTimesQty += parseFloat(obj['Contract Rate Converted']) * parseFloat(obj['CONTRACT QTY']);
-          } else {
-            acc[`total ${sumColName}`] += parseFloat(obj[sumColName]);
-          }
+          sumColNames.forEach(sumColName => {
+            if (sumColName === 'Contract Rate Converted') {
+              acc.totalContractQty += parseFloat(obj['CONTRACT QTY']);
+              acc.totalContractRateTimesQty += parseFloat(obj['Contract Rate Converted']) * parseFloat(obj['CONTRACT QTY']);
+            } else {
+              acc[`total ${sumColName}`] += parseFloat(obj[sumColName]);
+            }
+          });
           return acc;
         }, initialValue);
 
-        if (sumColName === 'Contract Rate Converted') {
-          aggregated[`total ${sumColName}`] = `\u20B9 ${parseFloat((aggregated.totalContractRateTimesQty / aggregated.totalContractQty).toFixed(2))}`;
+        if (sumColNames.includes('Contract Rate Converted')) {
+          aggregated[`total Contract Rate Converted`] = `\u20B9 ${parseFloat((aggregated.totalContractRateTimesQty / aggregated.totalContractQty).toFixed(2))}`;
           delete aggregated.totalContractQty;
           delete aggregated.totalContractRateTimesQty;
         }
@@ -286,12 +293,15 @@ function groupByAndSum(data, parameters) {
       })
       .value();
 
-    const sortedData = _.orderBy(Object.entries(result), ([key, value]) => value[`total ${sumColName}`], parameters.sortOrder || 'desc')
+    const sortedData = _.orderBy(Object.entries(result), ([key, value]) => value[`total ${sumColNames[0]}`], parameters.sortOrder || 'desc')
       .slice(0, 100)
-      .map(([key, value]) => `${key.split('|').join(', ')} :- ${value[`total ${sumColName}`].toLocaleString()} ${sumColName === 'Contract Rate Converted' ? '' : 'Kg'}`)
+      .map(([key, value]) => {
+        const sums = sumColNames.map(col => `${value[`total ${col}`].toLocaleString()} ${col === 'Contract Rate Converted' ? '' : 'Kg'}`).join(', ');
+        return `${key.split('|').join(', ')} :- ${sums}`;
+      })
       .join('\n');
 
-    const responseHeader = `${groupByColNames.join(', ')} : ${sumColName}`;
+    const responseHeader = `${groupByColNames.join(', ')} : ${sumColNames.join(', ')}`;
 
     const response = `
 ${filterStr.length ? 'Filter by:\n' + filterStr : ''}

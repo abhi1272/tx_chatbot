@@ -9,10 +9,10 @@ async function pendingOrderBook(req, res) {
   const intentName = req.body.queryResult.intent.displayName;
   const query = req.body.queryResult.queryText;
   const parameters = req.body.queryResult.parameters;
+  let userDetails = {}
 
   try {
     let resp 
-    let userDetails = {}
     if(Object.keys(req.body.originalDetectIntentRequest.payload).length){
       userDetails = req.body.originalDetectIntentRequest.payload.data.event.message.sender
     }

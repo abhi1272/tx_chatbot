@@ -148,7 +148,7 @@ function filterByCustomerName(data, filterCriteria) {
   
     return {
       key: "CustomerName",
-      colName: "customer",
+      colName: "Best Match Customer",
       keyValue: customerNames.map(item => `${item['PARTY NAME']}`).join(', '), 
       data: filteredData,
     };

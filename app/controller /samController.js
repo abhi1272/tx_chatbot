@@ -42,19 +42,19 @@ async function pendingOrderBook(req, res) {
     if(resp.includes('Empty')){
       resp = `No Data Found! Try Changing Your Query.` 
     }
-    else if(!resp.includes('Filter by:') && !resp.includes('Group by:')){
-      resp = `No Data Found! Please Refine your Query!\n-------------\nTips for Effective Use:
-Simply ask questions using output columns, Filters & Group By as mentioned below. To use GroupBy functionality use keyword 'by' before column names while creating questions & keyword 'Customer' before customer Names.
+//     else if(!resp.includes('Filter by:') && !resp.includes('Group by:')){
+//       resp = `No Data Found! Please Refine your Query!\n-------------\nTips for Effective Use:
+// Simply ask questions using output columns, Filters & Group By as mentioned below. To use GroupBy functionality use keyword 'by' before column names while creating questions & keyword 'Customer' before customer Names.
 
-Output Columns: Balance Quantity, Delivered Quantity, Contract Quantity & Contract Rate.
-Filters: Sales Office Name, Customer Name, Date, Material Group, Yarn Category, Thread Counts, Blend, Business Line.
-Group By: Material group, Yarn Category, Customer, Thread Count, Material code description & Blend.
+// Output Columns: Balance Quantity, Delivered Quantity, Contract Quantity & Contract Rate.
+// Filters: Sales Office Name, Customer Name, Date, Material Group, Yarn Category, Thread Counts, Blend, Business Line.
+// Group By: Material group, Yarn Category, Customer, Thread Count, Material code description & Blend.
 
-Few sample queries for your help:
-1) Balance qty of yarn for orders after 8 jan 2023 and before 10th april 2024 for customer Archana 
-2) Balance qty of fabric by sales office of last 6 months
-3) Delivered qty of Yarn of April 2024`
-    }
+// Few sample queries for your help:
+// 1) Balance qty of yarn for orders after 8 jan 2023 and before 10th april 2024 for customer Archana 
+// 2) Balance qty of fabric by sales office of last 6 months
+// 3) Delivered qty of Yarn of April 2024`
+//     }
 
     return resp;
   } catch (error) {

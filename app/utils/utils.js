@@ -183,7 +183,7 @@ function sumByColName(data, filterCriteria) {
 
       result.push({
         sumCol,
-        SumColVal: `${sum.toLocaleString()} Kg`,
+        SumColVal: `${Math.round(sum).toLocaleString()} Kg`,
       });
     });
 
@@ -247,9 +247,9 @@ function groupByAndSum(data, parameters) {
 
     let sumColNames = parameters.ColumnName.filter(col => SUM_COLS.includes(col));
 
-    if (parameters.ColumnName.includes("Contract Rate Converted")) {
-      sumColNames.push("Contract Rate Converted");
-    }
+    // if (parameters.ColumnName.includes("Contract Rate Converted")) {
+    //   sumColNames.push("Contract Rate Converted");
+    // }
 
     let groupByColNames = [];
     if (parameters?.GroupBy?.length) {
@@ -296,7 +296,7 @@ function groupByAndSum(data, parameters) {
     const sortedData = _.orderBy(Object.entries(result), ([key, value]) => value[`total ${sumColNames[0]}`], parameters.sortOrder || 'desc')
       .slice(0, 100)
       .map(([key, value]) => {
-        const sums = sumColNames.map(col => `${value[`total ${col}`].toLocaleString()} ${col === 'Contract Rate Converted' ? '' : 'Kg'}`).join(', ');
+        const sums = sumColNames.map(col => `${col === 'Contract Rate Converted' ? value[`total ${col}`] :  Math.round(value[`total ${col}`]).toLocaleString()} ${col === 'Contract Rate Converted' ? '' : 'Kg'}`).join(', ');
         return `${key.split('|').join(', ')} :- ${sums}`;
       })
       .join('\n');

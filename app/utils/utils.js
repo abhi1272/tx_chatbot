@@ -183,7 +183,7 @@ function sumByColName(data, filterCriteria) {
 
       result.push({
         sumCol,
-        SumColVal: `${Math.round(sum).toLocaleString()} Kg`,
+        SumColVal: `${Math.round(sum).toLocaleString()}`,
       });
     });
 
@@ -296,7 +296,7 @@ function groupByAndSum(data, parameters) {
     const sortedData = _.orderBy(Object.entries(result), ([key, value]) => value[`total ${sumColNames[0]}`], parameters.sortOrder || 'desc')
       .slice(0, 100)
       .map(([key, value]) => {
-        const sums = sumColNames.map(col => `${col === 'Contract Rate Converted' ? value[`total ${col}`] :  Math.round(value[`total ${col}`]).toLocaleString()} ${col === 'Contract Rate Converted' ? '' : 'Kg'}`).join(', ');
+        const sums = sumColNames.map(col => `${col === 'Contract Rate Converted' ? value[`total ${col}`] :  Math.round(value[`total ${col}`]).toLocaleString()} ${col === 'Contract Rate Converted' ? '' : ''}`).join(', ');
         return `${key.split('|').join(', ')} :- ${sums}`;
       })
       .join('\n');
@@ -403,7 +403,7 @@ function measureData(data, filterCriteria) {
     return avg;
   }
 
-  return result ? `${filterCriteria.measurement} value of customer ${result['PARTY NAME']} is ${result[colName].toLocaleString()} Kg` : 'No result found';
+  return result ? `${filterCriteria.measurement} value of customer ${result['PARTY NAME']} is ${result[colName].toLocaleString()}` : 'No result found';
 }
 
 

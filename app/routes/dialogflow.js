@@ -16,9 +16,11 @@ router.post('/webhook', async (req, res) => {
     let responseText = body.queryResult.fulfillmentText;
     console.log('Response text:', responseText);
 
-    if(body.queryResult.intent.name.includes(SAM_PROJECT_ID)){
-      responseText = await pendingOrderBook(req, res);
-    }
+    // if(body.queryResult.intent.name.includes(SAM_PROJECT_ID)){
+    //   responseText = await pendingOrderBook(req, res);
+    // }
+
+    responseText = await pendingOrderBook(req, res);
 
     // Extract chat ID if available
     // let chatId;
